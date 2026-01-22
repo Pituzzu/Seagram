@@ -2,30 +2,35 @@
 import React, { useState, useEffect } from 'react';
 import { Users, UserMinus, UserPlus, Search, Skull, Anchor } from 'lucide-react';
 import { User } from '../types';
-import { MOCK_USERS, CURRENT_USER } from '../constants';
+import { MOCK_USERS } from '../constants';
 
 interface FriendsProps {
   onUserClick: (userId: string) => void;
+  // Fix: Added currentUser to props to resolve TS error in App.tsx
+  currentUser: User;
 }
 
-const Friends: React.FC<FriendsProps> = ({ onUserClick }) => {
+const Friends: React.FC<FriendsProps> = ({ onUserClick, currentUser }) => {
   const [activeTab, setActiveTab] = useState<'following' | 'followers'>('following');
   const [searchTerm, setSearchTerm] = useState('');
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   
   // Per scopi demo, usiamo i mock users come followers
-  const followers = MOCK_USERS.filter(u => u.id !== CURRENT_USER.id);
+  // Fix: Use the currentUser prop instead of the global CURRENT_USER constant
+  const followers = MOCK_USERS.filter(u => u.id !== currentUser.id);
 
   useEffect(() => {
     const storedFollowing = JSON.parse(localStorage.getItem('seagram_following') || '[]');
-    setFollowingIds([...storedFollowing, ...CURRENT_USER.followingIds]);
-  }, []);
+    // Fix: Use the currentUser prop's followingIds instead of the global constant
+    setFollowingIds([...storedFollowing, ...currentUser.followingIds]);
+  }, [currentUser.followingIds]);
 
   const handleUnfollow = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     const newFollowing = followingIds.filter(fId => fId !== id);
     setFollowingIds(newFollowing);
-    localStorage.setItem('seagram_following', JSON.stringify(newFollowing.filter(fId => !CURRENT_USER.followingIds.includes(fId))));
+    // Fix: Use the currentUser prop instead of the global constant for filtering local storage
+    localStorage.setItem('seagram_following', JSON.stringify(newFollowing.filter(fId => !currentUser.followingIds.includes(fId))));
     window.dispatchEvent(new Event('following_updated'));
   };
 
@@ -111,7 +116,8 @@ const Friends: React.FC<FriendsProps> = ({ onUserClick }) => {
                     e.stopPropagation();
                     const newFollowing = [...followingIds, user.id];
                     setFollowingIds(newFollowing);
-                    localStorage.setItem('seagram_following', JSON.stringify(newFollowing.filter(fId => !CURRENT_USER.followingIds.includes(fId))));
+                    // Fix: Use the currentUser prop instead of the global constant when updating storage
+                    localStorage.setItem('seagram_following', JSON.stringify(newFollowing.filter(fId => !currentUser.followingIds.includes(fId))));
                     window.dispatchEvent(new Event('following_updated'));
                   }}
                   className="bg-[#00A3A1] text-white p-2 rounded-full hover:bg-[#00707c] transition-colors"

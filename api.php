@@ -5,11 +5,11 @@ header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
 
-// Configurazione Database
+// Configurazione Database fornita dall'utente
 $host = 'localhost';
-$db   = 'seagram_db';
-$user = 'root';
-$pass = '';
+$db   = 'u769962085_seagram';
+$user = 'u769962085.lightcyan-goldfinch-676459.hostingersite.com';
+$pass = '8Z@6F66y@3*s.+v';
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
@@ -22,11 +22,31 @@ $options = [
 try {
     $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
-    die(json_encode(['error' => 'Connessione Fallita: ' . $e.getMessage()]));
+    http_response_code(500);
+    die(json_encode(['error' => 'Errore di connessione al galeone (DB): ' . $e->getMessage()]));
 }
 
 $action = $_GET['action'] ?? '';
 $input = json_decode(file_get_contents('php://input'), true);
+
+// Funzione helper per formattare l'utente come richiesto dal frontend TS
+function formatUser($user) {
+    if (!$user) return null;
+    return [
+        'id' => (string)$user['id'],
+        'username' => $user['username'],
+        'avatar' => $user['avatar'],
+        'bio' => $user['bio'],
+        'lore' => $user['lore'],
+        'stats' => [
+            'posts' => (int)$user['posts_count'],
+            'followers' => (int)$user['followers_count'],
+            'following' => (int)$user['following_count']
+        ],
+        'followingIds' => [], // Gestibile con una tabella pivot separata
+        'followerIds' => []
+    ];
+}
 
 switch ($action) {
     case 'login':
@@ -36,55 +56,86 @@ switch ($action) {
         $user = $stmt->fetch();
         
         if ($user) {
-            echo json_encode(['success' => true, 'user' => $user]);
+            echo json_encode(['success' => true, 'user' => formatUser($user)]);
         } else {
             // Registrazione automatica per demo se non esiste
-            $stmt = $pdo->prepare("INSERT INTO users (username, password, bio) VALUES (?, ?, ?)");
-            $stmt->execute([$username, password_hash('pirate123', PASSWORD_DEFAULT), 'Un nuovo predone dei mari.']);
+            $stmt = $pdo->prepare("INSERT INTO users (username, password, bio, avatar) VALUES (?, ?, ?, ?)");
+            $defaultAvatar = 'https://picsum.photos/seed/' . uniqid() . '/150/150';
+            $stmt->execute([
+                $username, 
+                password_hash('pirate123', PASSWORD_DEFAULT), 
+                'Un nuovo predone dei mari di Seagram.',
+                $defaultAvatar
+            ]);
             $newId = $pdo->lastInsertId();
             $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
             $stmt->execute([$newId]);
-            echo json_encode(['success' => true, 'user' => $stmt->fetch()]);
+            echo json_encode(['success' => true, 'user' => formatUser($stmt->fetch())]);
         }
         break;
 
     case 'get_posts':
-        $stmt = $pdo->query("SELECT p.*, u.username as author, u.avatar FROM posts p JOIN users u ON p.user_id = u.id ORDER BY p.created_at DESC");
-        $posts = $stmt->fetchAll();
-        foreach ($posts as &$post) {
-            $stmt = $pdo->prepare("SELECT c.*, u.username as author FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ?");
-            $stmt->execute([$post['id']]);
-            $post['comments'] = $stmt->fetchAll();
+        try {
+            $stmt = $pdo->query("SELECT p.*, u.username as author, u.avatar as author_avatar FROM posts p JOIN users u ON p.user_id = u.id ORDER BY p.created_at DESC");
+            $posts = $stmt->fetchAll();
+            foreach ($posts as &$post) {
+                $stmt = $pdo->prepare("SELECT c.*, u.username as author FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ?");
+                $stmt->execute([$post['id']]);
+                $post['comments'] = $stmt->fetchAll();
+            }
+            echo json_encode($posts);
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
         }
-        echo json_encode($posts);
         break;
 
     case 'create_post':
         $userId = $input['user_id'];
         $content = $input['content'];
         $imageUrl = $input['image_url'] ?? null;
-        $stmt = $pdo->prepare("INSERT INTO posts (user_id, content, image_url) VALUES (?, ?, ?)");
-        $stmt->execute([$userId, $content, $imageUrl]);
-        echo json_encode(['success' => true]);
+        
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare("INSERT INTO posts (user_id, content, image_url) VALUES (?, ?, ?)");
+            $stmt->execute([$userId, $content, $imageUrl]);
+            
+            // Incrementa il counter post dell'utente
+            $stmt = $pdo->prepare("UPDATE users SET posts_count = posts_count + 1 WHERE id = ?");
+            $stmt->execute([$userId]);
+            
+            $pdo->commit();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            echo json_encode(['error' => $e->getMessage()]);
+        }
         break;
 
     case 'follow':
         $followerId = $input['follower_id'];
         $followingId = $input['following_id'];
-        $stmt = $pdo->prepare("INSERT IGNORE INTO follows (follower_id, following_id) VALUES (?, ?)");
-        $stmt->execute([$followerId, $followingId]);
-        echo json_encode(['success' => true]);
-        break;
-
-    case 'get_messages':
-        $userId = $_GET['user_id'];
-        $stmt = $pdo->prepare("SELECT * FROM messages WHERE sender_id = ? OR receiver_id = ? ORDER BY created_at ASC");
-        $stmt->execute([$userId, $userId]);
-        echo json_encode($stmt->fetchAll());
+        
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare("INSERT IGNORE INTO follows (follower_id, following_id) VALUES (?, ?)");
+            $stmt->execute([$followerId, $followingId]);
+            
+            if ($stmt->rowCount() > 0) {
+                // Aggiorna counter se è un nuovo follow
+                $pdo->prepare("UPDATE users SET following_count = following_count + 1 WHERE id = ?")->execute([$followerId]);
+                $pdo->prepare("UPDATE users SET followers_count = followers_count + 1 WHERE id = ?")->execute([$followingId]);
+            }
+            
+            $pdo->commit();
+            echo json_encode(['success' => true]);
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            echo json_encode(['error' => $e->getMessage()]);
+        }
         break;
 
     default:
-        echo json_encode(['error' => 'Azione non valida']);
+        echo json_encode(['error' => 'Rotta non trovata nelle mappe']);
         break;
 }
 ?>

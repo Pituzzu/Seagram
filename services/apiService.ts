@@ -1,7 +1,7 @@
 
 import { Post, User, Message, Conversation, CrewRequest } from '../types';
 
-const API_URL = 'api.php'; // In produzione sarà l'URL completo del server PHP
+const API_URL = 'api.php';
 
 export const apiService = {
   async login(username: string, shipName?: string): Promise<User> {
@@ -18,15 +18,17 @@ export const apiService = {
   async getPosts(): Promise<Post[]> {
     const response = await fetch(`${API_URL}?action=get_posts`);
     const data = await response.json();
+    if (data.error) return [];
+    
     return data.map((p: any) => ({
       id: String(p.id),
       authorId: String(p.user_id),
       author: p.author,
-      avatar: p.avatar,
+      avatar: p.author_avatar,
       content: p.content,
       timestamp: this.formatTime(p.created_at),
-      likes: p.likes_count,
-      comments: p.comments.map((c: any) => ({
+      likes: parseInt(p.likes_count) || 0,
+      comments: (p.comments || []).map((c: any) => ({
         id: String(c.id),
         authorId: String(c.user_id),
         author: c.author,
@@ -38,11 +40,13 @@ export const apiService = {
   },
 
   async createPost(userId: string, content: string, imageUrl?: string): Promise<void> {
-    await fetch(`${API_URL}?action=create_post`, {
+    const response = await fetch(`${API_URL}?action=create_post`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: userId, content, image_url: imageUrl })
     });
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
   },
 
   async toggleFollow(followerId: string, followingId: string): Promise<void> {
@@ -54,10 +58,12 @@ export const apiService = {
   },
 
   formatTime(sqlTimestamp: string): string {
-    const date = new Date(sqlTimestamp);
+    if (!sqlTimestamp) return 'Tempo ignoto';
+    const date = new Date(sqlTimestamp.replace(' ', 'T')); // Formato ISO per Safari/Firefox
     const now = new Date();
     const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
     
+    if (isNaN(date.getTime())) return 'Anticamente';
     if (diff < 60) return 'Adesso';
     if (diff < 3600) return `${Math.floor(diff / 60)}m fa`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h fa`;
