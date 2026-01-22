@@ -1,18 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import Layout from './components/Layout';
-import Home from './views/Home';
-import Guild from './views/Guild';
-import Login from './views/Login';
-import Profile from './views/Profile';
-import CreatePost from './views/CreatePost';
-import Notifications from './views/Notifications';
-import Friends from './views/Friends';
-import Search from './views/Search';
-import Messages from './views/Messages';
-import { View, Post, CrewRequest, User } from './types';
-import { CURRENT_USER, INITIAL_POSTS } from './constants';
-import { apiService } from './services/apiService';
+import Layout from './components/Layout.tsx';
+import Home from './views/Home.tsx';
+import Guild from './views/Guild.tsx';
+import Login from './views/Login.tsx';
+import Profile from './views/Profile.tsx';
+import CreatePost from './views/CreatePost.tsx';
+import Notifications from './views/Notifications.tsx';
+import Friends from './views/Friends.tsx';
+import Search from './views/Search.tsx';
+import Messages from './views/Messages.tsx';
+import { View, Post, User } from './types.ts';
+import { CURRENT_USER, INITIAL_POSTS } from './constants.tsx';
+import { apiService } from './services/apiService.ts';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.LOGIN);
@@ -33,7 +33,6 @@ const App: React.FC = () => {
           setCurrentView(View.HOME);
           setSelectedProfileId(user.id);
           
-          // Carica post in background
           apiService.getPosts().then(fetchedPosts => {
             if (fetchedPosts && fetchedPosts.length > 0) setPosts(fetchedPosts);
           }).catch(() => console.warn("Backend non raggiungibile, uso cache locale."));
@@ -48,7 +47,6 @@ const App: React.FC = () => {
   const handleLogin = async (username: string) => {
     setLoading(true);
     try {
-      // Prova il login via API
       const user = await apiService.login(username);
       setCurrentUser(user);
       localStorage.setItem('seagram_active_session_user', JSON.stringify(user));
@@ -56,7 +54,6 @@ const App: React.FC = () => {
       setIsLoggedIn(true);
       setCurrentView(View.HOME);
     } catch (e) {
-      // Fallback per test senza server
       const mockUser = { ...CURRENT_USER, username, id: `u-${Date.now()}` };
       setCurrentUser(mockUser);
       localStorage.setItem('seagram_active_session_user', JSON.stringify(mockUser));

@@ -1,5 +1,5 @@
 
-import { Post, User, Message, Conversation, CrewRequest } from '../types';
+import { Post, User } from '../types.ts';
 
 const API_URL = 'api.php';
 
@@ -26,14 +26,14 @@ export const apiService = {
       author: p.author,
       avatar: p.author_avatar,
       content: p.content,
-      timestamp: this.formatTime(p.created_at),
+      timestamp: apiService.formatTime(p.created_at),
       likes: parseInt(p.likes_count) || 0,
       comments: (p.comments || []).map((c: any) => ({
         id: String(c.id),
         authorId: String(c.user_id),
         author: c.author,
         content: c.content,
-        timestamp: this.formatTime(c.created_at)
+        timestamp: apiService.formatTime(c.created_at)
       })),
       image: p.image_url
     }));
@@ -59,7 +59,7 @@ export const apiService = {
 
   formatTime(sqlTimestamp: string): string {
     if (!sqlTimestamp) return 'Tempo ignoto';
-    const date = new Date(sqlTimestamp.replace(' ', 'T')); // Formato ISO per Safari/Firefox
+    const date = new Date(sqlTimestamp.replace(' ', 'T'));
     const now = new Date();
     const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
     
