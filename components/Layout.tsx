@@ -13,95 +13,123 @@ interface LayoutProps {
   messageCount?: number;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, isLoggedIn, onLogout, notificationCount = 0, messageCount = 0 }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeView, onViewChange, isLoggedIn, onLogout, notificationCount = 0 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  if (!isLoggedIn) return <div className="min-h-screen bg-[#0c1c22]">{children}</div>;
+  if (!isLoggedIn) return <div className="sea-gradient" style={{ minHeight: '100vh' }}>{children}</div>;
 
   return (
-    <div className="min-h-screen flex flex-col pb-20 bg-[#0c1c22]">
+    <div style={{ minHeight: '100vh', paddingBottom: '80px' }}>
       {/* Top Navbar */}
-      <nav className="sticky top-0 z-50 wood-texture border-b border-[#D4AF37]/40 shadow-xl py-2 px-4 flex justify-between items-center h-14">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => onViewChange(View.HOME)}>
-          <Anchor className="text-[#00A3A1] w-6 h-6" />
-          <h1 className="font-pirate text-3xl text-[#D4AF37] tracking-tighter select-none">Seagram</h1>
+      <nav className="navbar-top wood-texture">
+        <div className="flex items-center gap-2" style={{ cursor: 'pointer' }} onClick={() => onViewChange(View.HOME)}>
+          <Anchor className="text-teal" size={24} />
+          <h1 className="font-pirate text-gold" style={{ fontSize: '2rem' }}>Seagram</h1>
         </div>
         <div className="flex items-center gap-4">
           <MessageSquare 
-            className={`w-6 h-6 cursor-pointer transition-colors ${activeView === View.MESSAGES ? 'text-[#00A3A1]' : 'text-[#e0d7c6] hover:text-[#00A3A1]'}`} 
+            className={activeView === View.MESSAGES ? 'text-teal' : 'text-light'} 
+            style={{ cursor: 'pointer' }}
             onClick={() => onViewChange(View.MESSAGES)} 
           />
-          <button 
-            onClick={() => setIsSidebarOpen(true)}
-            className="p-1 hover:bg-[#3d2b1f] rounded-full transition-colors"
-          >
-            <Menu className="text-[#e0d7c6] w-6 h-6" />
+          <button onClick={() => setIsSidebarOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+            <Menu className="text-light" size={24} />
           </button>
         </div>
       </nav>
 
-      {/* Sidebar (Right) */}
-      <div className={`fixed inset-0 z-[60] transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />
-        <div className={`absolute right-0 top-0 h-full w-72 wood-texture border-l-2 border-[#D4AF37] p-6 shadow-2xl transform transition-transform duration-300 ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-          <div className="flex justify-between items-center mb-10">
-            <h2 className="font-cinzel text-xl text-[#D4AF37]">Menu Pirata</h2>
-            <button onClick={() => setIsSidebarOpen(false)}>
-              <X className="w-6 h-6 text-[#e0d7c6]" />
-            </button>
-          </div>
-          
-          <ul className="space-y-6 font-cinzel text-lg">
-            <li className="flex items-center gap-4 hover:text-[#00A3A1] cursor-pointer transition-colors" onClick={() => { onViewChange(View.HOME); setIsSidebarOpen(false); }}>
-              <Compass className="w-5 h-5" /> Esplora Mare
-            </li>
-            <li className="flex items-center gap-4 hover:text-[#00A3A1] cursor-pointer transition-colors" onClick={() => { onViewChange(View.GUILD); setIsSidebarOpen(false); }}>
-              <Skull className="w-5 h-5" /> Gilda Tocca Pelati
-            </li>
-            <li className="flex items-center gap-4 hover:text-[#00A3A1] cursor-pointer transition-colors" onClick={() => { onViewChange(View.SEARCH); setIsSidebarOpen(false); }}>
-              <Search className="w-5 h-5" /> Cerca Pirati
-            </li>
-            <li className="flex items-center gap-4 hover:text-[#00A3A1] cursor-pointer transition-colors" onClick={() => { onViewChange(View.FRIENDS); setIsSidebarOpen(false); }}>
-              <Users className="w-5 h-5" /> La Mia Ciurma
-            </li>
-            <li className="flex items-center gap-4 hover:text-[#00A3A1] cursor-pointer transition-colors" onClick={() => { onViewChange(View.PROFILE); setIsSidebarOpen(false); }}>
-              <User className="w-5 h-5" /> Il Mio Diario
-            </li>
-            <li className="border-t border-[#D4AF37]/30 my-6" />
-            <li className="text-red-400 hover:text-red-300 cursor-pointer text-sm mt-10 flex items-center gap-2" onClick={() => { onLogout(); setIsSidebarOpen(false); }}>
-              <LogOut className="w-4 h-4" /> Abbandona Nave
-            </li>
-          </ul>
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)}
+          style={{ 
+            position: 'fixed', inset: 0, zIndex: 150, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)'
+          }}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div 
+        className="wood-texture"
+        style={{ 
+          position: 'fixed', right: 0, top: 0, height: '100%', width: '280px', zIndex: 200,
+          borderLeft: '3px solid var(--gold)', padding: '2rem',
+          transform: isSidebarOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.3s ease-out'
+        }}
+      >
+        <div className="flex justify-between items-center" style={{ marginBottom: '2.5rem' }}>
+          <h2 className="font-cinzel text-gold" style={{ fontSize: '1.25rem' }}>Menu Pirata</h2>
+          <button onClick={() => setIsSidebarOpen(false)} style={{ background: 'none', border: 'none' }}>
+            <X className="text-light" size={24} />
+          </button>
         </div>
+        
+        <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {[
+            { view: View.HOME, icon: <Compass size={20} />, label: 'Esplora Mare' },
+            { view: View.GUILD, icon: <Skull size={20} />, label: 'Gilda Tocca Pelati' },
+            { view: View.SEARCH, icon: <Search size={20} />, label: 'Cerca Pirati' },
+            { view: View.FRIENDS, icon: <Users size={20} />, label: 'La Mia Ciurma' },
+            { view: View.PROFILE, icon: <User size={20} />, label: 'Il Mio Diario' },
+          ].map(item => (
+            <li 
+              key={item.view}
+              className="flex items-center gap-4 font-cinzel"
+              style={{ cursor: 'pointer', transition: 'color 0.2s' }}
+              onClick={() => { onViewChange(item.view); setIsSidebarOpen(false); }}
+            >
+              {item.icon} {item.label}
+            </li>
+          ))}
+          <li style={{ borderTop: '1px solid rgba(212,175,55,0.3)', margin: '1rem 0' }} />
+          <li 
+            style={{ color: '#ff6b6b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            onClick={() => { onLogout(); setIsSidebarOpen(false); }}
+          >
+            <LogOut size={16} /> Abbandona Nave
+          </li>
+        </ul>
       </div>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-xl mx-auto w-full p-0 sm:p-4">
+      {/* Main Content */}
+      <main className="container animate-fadeIn">
         {children}
       </main>
 
       {/* Bottom Navbar */}
-      <div className="fixed bottom-0 left-0 right-0 wood-texture border-t border-[#D4AF37]/30 z-50 h-16 flex items-center justify-around px-4 shadow-[0_-4px_10px_rgba(0,0,0,0.5)]">
-        <button onClick={() => onViewChange(View.HOME)} className={activeView === View.HOME ? 'text-[#00A3A1]' : 'text-gray-400'}>
-          <Home className="w-7 h-7" />
-        </button>
-        <button onClick={() => onViewChange(View.SEARCH)} className={activeView === View.SEARCH ? 'text-[#00A3A1]' : 'text-gray-400'}>
-          <Search className="w-7 h-7" />
-        </button>
-        <button onClick={() => onViewChange(View.CREATE)} className="bg-[#D4AF37] text-[#2a1b12] p-2 rounded-lg -mt-8 shadow-2xl hover:scale-110 transition-transform active:scale-95">
-          <PlusSquare className="w-8 h-8" />
-        </button>
-        <button onClick={() => onViewChange(View.NOTIFICATIONS)} className={`relative ${activeView === View.NOTIFICATIONS ? 'text-[#00A3A1]' : 'text-gray-400'}`}>
-          <Bell className="w-7 h-7" />
-          {notificationCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-[#2a1b12]">
-              {notificationCount}
-            </span>
-          )}
-        </button>
-        <button onClick={() => onViewChange(View.PROFILE)} className={activeView === View.PROFILE ? 'text-[#00A3A1]' : 'text-gray-400'}>
-          <User className="w-7 h-7" />
-        </button>
+      <div className="navbar-bottom wood-texture">
+        {[
+          { view: View.HOME, icon: <Home size={28} /> },
+          { view: View.SEARCH, icon: <Search size={28} /> },
+          { view: View.CREATE, icon: <PlusSquare size={32} />, special: true },
+          { view: View.NOTIFICATIONS, icon: <Bell size={28} />, badge: notificationCount },
+          { view: View.PROFILE, icon: <User size={28} /> },
+        ].map(item => (
+          <button 
+            key={item.view}
+            onClick={() => onViewChange(item.view)}
+            style={{ 
+              background: item.special ? 'var(--gold)' : 'none',
+              color: item.special ? 'var(--wood)' : (activeView === item.view ? 'var(--teal-light)' : '#888'),
+              border: 'none', padding: item.special ? '0.5rem' : '0',
+              borderRadius: item.special ? '8px' : '0',
+              marginTop: item.special ? '-2rem' : '0',
+              boxShadow: item.special ? '0 5px 15px rgba(0,0,0,0.5)' : 'none',
+              cursor: 'pointer', position: 'relative'
+            }}
+          >
+            {item.icon}
+            {item.badge ? (
+              <span style={{ 
+                position: 'absolute', top: '-5px', right: '-5px', background: 'red', fontSize: '10px', 
+                padding: '2px 5px', borderRadius: '10px', color: 'white' 
+              }}>
+                {item.badge}
+              </span>
+            ) : null}
+          </button>
+        ))}
       </div>
     </div>
   );
