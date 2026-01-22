@@ -44,25 +44,15 @@ const App: React.FC = () => {
     initApp();
   }, []);
 
-  const handleLogin = async (username: string) => {
-    setLoading(true);
-    try {
-      const user = await apiService.login(username);
-      setCurrentUser(user);
-      localStorage.setItem('seagram_active_session_user', JSON.stringify(user));
-      setSelectedProfileId(user.id);
-      setIsLoggedIn(true);
-      setCurrentView(View.HOME);
-    } catch (e) {
-      const mockUser = { ...CURRENT_USER, username, id: `u-${Date.now()}` };
-      setCurrentUser(mockUser);
-      localStorage.setItem('seagram_active_session_user', JSON.stringify(mockUser));
-      setSelectedProfileId(mockUser.id);
-      setIsLoggedIn(true);
-      setCurrentView(View.HOME);
-    } finally {
-      setLoading(false);
-    }
+  const handleAuthSuccess = (user: User) => {
+    setCurrentUser(user);
+    localStorage.setItem('seagram_active_session_user', JSON.stringify(user));
+    setSelectedProfileId(user.id);
+    setIsLoggedIn(true);
+    setCurrentView(View.HOME);
+    
+    // Ricarica i post dopo l'accesso
+    apiService.getPosts().then(setPosts).catch(console.error);
   };
 
   const handleLogout = () => {
@@ -77,7 +67,7 @@ const App: React.FC = () => {
   };
 
   const renderView = () => {
-    if (!isLoggedIn) return <Login onLogin={handleLogin} />;
+    if (!isLoggedIn) return <Login onLogin={handleAuthSuccess} />;
 
     switch (currentView) {
       case View.HOME:

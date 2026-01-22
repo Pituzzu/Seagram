@@ -5,7 +5,7 @@ header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
 
-// Configurazione Database fornita dall'utente
+// Configurazione Database
 $host = 'localhost';
 $db   = 'u769962085_seagram';
 $user = 'u769962085.lightcyan-goldfinch-676459.hostingersite.com';
@@ -29,7 +29,6 @@ try {
 $action = $_GET['action'] ?? '';
 $input = json_decode(file_get_contents('php://input'), true);
 
-// Funzione helper per formattare l'utente come richiesto dal frontend TS
 function formatUser($user) {
     if (!$user) return null;
     return [
@@ -43,14 +42,14 @@ function formatUser($user) {
             'followers' => (int)$user['followers_count'],
             'following' => (int)$user['following_count']
         ],
-        'followingIds' => [], // Gestibile con una tabella pivot separata
+        'followingIds' => [],
         'followerIds' => []
     ];
 }
 
 switch ($action) {
     case 'login':
-        $username = $input['username'];
+        $username = $input['username'] ?? '';
         $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
         $stmt->execute([$username]);
         $user = $stmt->fetch();
@@ -58,19 +57,39 @@ switch ($action) {
         if ($user) {
             echo json_encode(['success' => true, 'user' => formatUser($user)]);
         } else {
-            // Registrazione automatica per demo se non esiste
+            http_response_code(401);
+            echo json_encode(['error' => 'Pirata non trovato. Arruolati prima di salpare!']);
+        }
+        break;
+
+    case 'register':
+        $username = $input['username'] ?? '';
+        $bio = $input['bio'] ?? 'Un nuovo predone dei mari di Seagram.';
+        
+        // Verifica se esiste già
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+        $stmt->execute([$username]);
+        if ($stmt->fetch()) {
+            http_response_code(400);
+            die(json_encode(['error' => 'Questo nome è già temuto nei mari. Scegline un altro!']));
+        }
+
+        try {
             $stmt = $pdo->prepare("INSERT INTO users (username, password, bio, avatar) VALUES (?, ?, ?, ?)");
             $defaultAvatar = 'https://picsum.photos/seed/' . uniqid() . '/150/150';
             $stmt->execute([
                 $username, 
                 password_hash('pirate123', PASSWORD_DEFAULT), 
-                'Un nuovo predone dei mari di Seagram.',
+                $bio,
                 $defaultAvatar
             ]);
             $newId = $pdo->lastInsertId();
             $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
             $stmt->execute([$newId]);
             echo json_encode(['success' => true, 'user' => formatUser($stmt->fetch())]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Tempesta durante l\'arruolamento: ' . $e->getMessage()]);
         }
         break;
 
@@ -98,11 +117,8 @@ switch ($action) {
         try {
             $stmt = $pdo->prepare("INSERT INTO posts (user_id, content, image_url) VALUES (?, ?, ?)");
             $stmt->execute([$userId, $content, $imageUrl]);
-            
-            // Incrementa il counter post dell'utente
             $stmt = $pdo->prepare("UPDATE users SET posts_count = posts_count + 1 WHERE id = ?");
             $stmt->execute([$userId]);
-            
             $pdo->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
@@ -119,13 +135,10 @@ switch ($action) {
         try {
             $stmt = $pdo->prepare("INSERT IGNORE INTO follows (follower_id, following_id) VALUES (?, ?)");
             $stmt->execute([$followerId, $followingId]);
-            
             if ($stmt->rowCount() > 0) {
-                // Aggiorna counter se è un nuovo follow
                 $pdo->prepare("UPDATE users SET following_count = following_count + 1 WHERE id = ?")->execute([$followerId]);
                 $pdo->prepare("UPDATE users SET followers_count = followers_count + 1 WHERE id = ?")->execute([$followingId]);
             }
-            
             $pdo->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {

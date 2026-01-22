@@ -4,14 +4,25 @@ import { Post, User } from '../types.ts';
 const API_URL = 'api.php';
 
 export const apiService = {
-  async login(username: string, shipName?: string): Promise<User> {
+  async login(username: string): Promise<User> {
     const response = await fetch(`${API_URL}?action=login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, shipName })
+      body: JSON.stringify({ username })
     });
     const data = await response.json();
-    if (data.error) throw new Error(data.error);
+    if (!response.ok) throw new Error(data.error || 'Errore durante l\'accesso.');
+    return data.user;
+  },
+
+  async register(username: string, bio: string): Promise<User> {
+    const response = await fetch(`${API_URL}?action=register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, bio })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Errore durante la registrazione.');
     return data.user;
   },
 
@@ -66,7 +77,7 @@ export const apiService = {
     if (isNaN(date.getTime())) return 'Anticamente';
     if (diff < 60) return 'Adesso';
     if (diff < 3600) return `${Math.floor(diff / 60)}m fa`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h fa`;
+    if (diff < 84600) return `${Math.floor(diff / 3600)}h fa`;
     return date.toLocaleDateString();
   }
 };
