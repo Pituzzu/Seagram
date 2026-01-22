@@ -5,11 +5,11 @@ header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json");
 
-// Configurazione Database
-$host = 'localhost';
-$db   = 'u769962085_seagram';
-$user = 'u769962085.lightcyan-goldfinch-676459.hostingersite.com';
-$pass = '8Z@6F66y@3*s.+v';
+// CONFIGURAZIONE DATABASE - Inserisci qui i dati del tuo database Hostinger
+$host = 'localhost'; 
+$db   = 'u769962085_seagram'; // Il nome del database creato nel pannello Hostinger
+$user = 'u769962085_admin';    // Solitamente è qualcosa come u123456789_nomeutente
+$pass = 'INSERISCI_QUI_LA_PASSWORD'; // La password che hai impostato per l'utente DB
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
@@ -23,7 +23,10 @@ try {
     $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
     http_response_code(500);
-    die(json_encode(['error' => 'Errore di connessione al galeone (DB): ' . $e->getMessage()]));
+    die(json_encode([
+        'error' => 'Errore di connessione al database.',
+        'details' => 'Verifica le credenziali in api.php. Messaggio: ' . $e->getMessage()
+    ]));
 }
 
 $action = $_GET['action'] ?? '';
@@ -66,7 +69,6 @@ switch ($action) {
         $username = $input['username'] ?? '';
         $bio = $input['bio'] ?? 'Un nuovo predone dei mari di Seagram.';
         
-        // Verifica se esiste già
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
         $stmt->execute([$username]);
         if ($stmt->fetch()) {
@@ -89,7 +91,7 @@ switch ($action) {
             echo json_encode(['success' => true, 'user' => formatUser($stmt->fetch())]);
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode(['error' => 'Tempesta durante l\'arruolamento: ' . $e->getMessage()]);
+            echo json_encode(['error' => 'Errore durante la creazione del profilo: ' . $e->getMessage()]);
         }
         break;
 
@@ -109,10 +111,12 @@ switch ($action) {
         break;
 
     case 'create_post':
-        $userId = $input['user_id'];
-        $content = $input['content'];
+        $userId = $input['user_id'] ?? null;
+        $content = $input['content'] ?? '';
         $imageUrl = $input['image_url'] ?? null;
         
+        if (!$userId) die(json_encode(['error' => 'ID Utente mancante']));
+
         $pdo->beginTransaction();
         try {
             $stmt = $pdo->prepare("INSERT INTO posts (user_id, content, image_url) VALUES (?, ?, ?)");
@@ -127,28 +131,8 @@ switch ($action) {
         }
         break;
 
-    case 'follow':
-        $followerId = $input['follower_id'];
-        $followingId = $input['following_id'];
-        
-        $pdo->beginTransaction();
-        try {
-            $stmt = $pdo->prepare("INSERT IGNORE INTO follows (follower_id, following_id) VALUES (?, ?)");
-            $stmt->execute([$followerId, $followingId]);
-            if ($stmt->rowCount() > 0) {
-                $pdo->prepare("UPDATE users SET following_count = following_count + 1 WHERE id = ?")->execute([$followerId]);
-                $pdo->prepare("UPDATE users SET followers_count = followers_count + 1 WHERE id = ?")->execute([$followingId]);
-            }
-            $pdo->commit();
-            echo json_encode(['success' => true]);
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            echo json_encode(['error' => $e->getMessage()]);
-        }
-        break;
-
     default:
-        echo json_encode(['error' => 'Rotta non trovata nelle mappe']);
+        echo json_encode(['error' => 'Azione non valida']);
         break;
 }
 ?>
