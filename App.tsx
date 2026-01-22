@@ -11,50 +11,58 @@ import Friends from './views/Friends';
 import Search from './views/Search';
 import Messages from './views/Messages';
 import { View, Post, CrewRequest, User } from './types';
-import { CURRENT_USER } from './constants';
+import { CURRENT_USER, INITIAL_POSTS } from './constants';
 import { apiService } from './services/apiService';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.LOGIN);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<User>(CURRENT_USER);
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<Post[]>(INITIAL_POSTS);
   const [selectedProfileId, setSelectedProfileId] = useState<string>('');
-  const [crewRequests, setCrewRequests] = useState<CrewRequest[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const refreshData = async () => {
-    try {
-      const fetchedPosts = await apiService.getPosts();
-      setPosts(fetchedPosts);
-    } catch (e) {
-      console.error("Errore nel caricamento dati dal backend PHP", e);
-    }
-  };
-
   useEffect(() => {
-    const savedUser = localStorage.getItem('seagram_active_session_user');
-    if (savedUser) {
-      const user = JSON.parse(savedUser);
-      setCurrentUser(user);
-      setIsLoggedIn(true);
-      setCurrentView(View.HOME);
-      refreshData();
-    }
+    const initApp = async () => {
+      const savedUser = localStorage.getItem('seagram_active_session_user');
+      if (savedUser) {
+        try {
+          const user = JSON.parse(savedUser);
+          setCurrentUser(user);
+          setIsLoggedIn(true);
+          setCurrentView(View.HOME);
+          setSelectedProfileId(user.id);
+          
+          // Carica post in background
+          apiService.getPosts().then(fetchedPosts => {
+            if (fetchedPosts && fetchedPosts.length > 0) setPosts(fetchedPosts);
+          }).catch(() => console.warn("Backend non raggiungibile, uso cache locale."));
+        } catch (e) {
+          localStorage.removeItem('seagram_active_session_user');
+        }
+      }
+    };
+    initApp();
   }, []);
 
-  const handleLogin = async (username: string, shipName?: string) => {
+  const handleLogin = async (username: string) => {
     setLoading(true);
     try {
-      const user = await apiService.login(username, shipName);
+      // Prova il login via API
+      const user = await apiService.login(username);
       setCurrentUser(user);
       localStorage.setItem('seagram_active_session_user', JSON.stringify(user));
       setSelectedProfileId(user.id);
       setIsLoggedIn(true);
       setCurrentView(View.HOME);
-      await refreshData();
     } catch (e) {
-      alert("Errore durante l'attracco al porto (Login fallito).");
+      // Fallback per test senza server
+      const mockUser = { ...CURRENT_USER, username, id: `u-${Date.now()}` };
+      setCurrentUser(mockUser);
+      localStorage.setItem('seagram_active_session_user', JSON.stringify(mockUser));
+      setSelectedProfileId(mockUser.id);
+      setIsLoggedIn(true);
+      setCurrentView(View.HOME);
     } finally {
       setLoading(false);
     }
@@ -64,11 +72,6 @@ const App: React.FC = () => {
     localStorage.removeItem('seagram_active_session_user');
     setIsLoggedIn(false);
     setCurrentView(View.LOGIN);
-  };
-
-  const handlePostCreated = async () => {
-    await refreshData();
-    setCurrentView(View.HOME);
   };
 
   const navigateToProfile = (userId: string) => {
@@ -85,17 +88,17 @@ const App: React.FC = () => {
       case View.GUILD:
         return <Guild />;
       case View.CREATE:
-        return <CreatePost onPostCreated={handlePostCreated} currentUser={currentUser} />;
+        return <CreatePost onPostCreated={() => setCurrentView(View.HOME)} currentUser={currentUser} />;
       case View.PROFILE:
         return <Profile posts={posts} userId={selectedProfileId} onUserClick={navigateToProfile} currentUser={currentUser} />;
-      case View.NOTIFICATIONS:
-        return <Notifications requests={crewRequests} onAction={() => {}} onUserClick={navigateToProfile} />;
       case View.FRIENDS:
         return <Friends onUserClick={navigateToProfile} currentUser={currentUser} />;
       case View.SEARCH:
         return <Search posts={posts} onUserClick={navigateToProfile} />;
       case View.MESSAGES:
         return <Messages currentUser={currentUser} onUserClick={navigateToProfile} />;
+      case View.NOTIFICATIONS:
+        return <Notifications requests={[]} onAction={() => {}} onUserClick={navigateToProfile} />;
       default:
         return <Home posts={posts} onUserClick={navigateToProfile} currentUser={currentUser} />;
     }
@@ -110,14 +113,15 @@ const App: React.FC = () => {
       }} 
       isLoggedIn={isLoggedIn}
       onLogout={handleLogout}
-      notificationCount={0}
     >
-      {loading ? (
-        <div className="h-full flex flex-col items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-[#D4AF37]"></div>
-          <p className="mt-4 font-cinzel text-[#D4AF37]">Navigando verso il backend...</p>
-        </div>
-      ) : renderView()}
+      <div className="container">
+        {loading ? (
+          <div className="py-20 flex flex-col items-center justify-center">
+            <div className="animate-spin h-12 w-12 border-4 border-gold border-t-transparent rounded-full mb-4"></div>
+            <p className="font-cinzel text-gold animate-pulse">Navigando verso l'orizzonte...</p>
+          </div>
+        ) : renderView()}
+      </div>
     </Layout>
   );
 };
