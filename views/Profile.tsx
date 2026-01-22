@@ -1,9 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { MOCK_USERS } from '../constants';
-import { Grid, Bookmark, Tag, UserPlus, UserCheck, Anchor, Edit3, Save, Sparkles, BookOpen } from 'lucide-react';
-import { Post, User, CrewRequest } from '../types';
-import { generatePirateLore } from '../services/geminiService';
+import { Post, User } from '../types';
 
 interface ProfileProps {
   posts: Post[];
@@ -14,17 +12,13 @@ interface ProfileProps {
 
 const Profile: React.FC<ProfileProps> = ({ posts, userId, onUserClick, currentUser }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editBio, setEditBio] = useState('');
-  const [editLore, setEditLore] = useState('');
-  const [isGeneratingLore, setIsGeneratingLore] = useState(false);
 
   useEffect(() => {
     const targetUser = MOCK_USERS.find(u => u.id === userId) || currentUser;
     setUser(targetUser);
     setEditBio(targetUser.bio);
-    setEditLore(targetUser.lore || '');
   }, [userId, currentUser]);
 
   if (!user) return null;

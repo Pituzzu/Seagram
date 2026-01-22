@@ -1,20 +1,10 @@
 
 import React, { useState } from 'react';
 import { GUILD_MEMBERS } from '../constants';
-import { Skull, Coins, Sword, ScrollText, Sparkles } from 'lucide-react';
-import { generatePirateLore } from '../services/geminiService';
+import { Skull, Coins, Sword, ScrollText } from 'lucide-react';
 
 const Guild: React.FC = () => {
   const [activeMember, setActiveMember] = useState(GUILD_MEMBERS[0]);
-  const [loadingLore, setLoadingLore] = useState(false);
-
-  const handleInspireLore = async () => {
-    setLoadingLore(true);
-    const newLore = await generatePirateLore(activeMember.name);
-    // In a real app we'd update state or call an API, here we just update local display
-    alert(`Gemini suggerisce questa nuova lore: ${newLore}`);
-    setLoadingLore(false);
-  };
 
   return (
     <div className="animate-fadeIn pb-10">
@@ -94,15 +84,6 @@ const Guild: React.FC = () => {
               <p className="text-sm leading-relaxed mb-6 italic text-[#2a1b12]/80">
                 {activeMember.lore}
               </p>
-              
-              <button 
-                onClick={handleInspireLore}
-                disabled={loadingLore}
-                className="flex items-center gap-2 text-[10px] font-bold uppercase bg-[#2a1b12] text-[#f4e7d3] px-3 py-2 rounded hover:bg-[#3d2b1f] transition-colors disabled:opacity-50"
-              >
-                <Sparkles className={`w-3 h-3 ${loadingLore ? 'animate-spin' : ''}`} />
-                {loadingLore ? 'Ascoltando gli Spiriti...' : 'Ispirazione Gemini'}
-              </button>
             </div>
           </div>
         </div>
