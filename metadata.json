@@ -1,0 +1,7 @@
+{
+  "name": "Seagram - Sea of Thieves Social",
+  "description": "The ultimate social network for pirates. Share your voyages, join the Tocca Pelati guild, and climb the ranks of Seagram.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
